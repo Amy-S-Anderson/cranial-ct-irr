@@ -9,11 +9,13 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-### This script is intended to compare results of cranial pathology assessment of porous lesions from 1) photos and 2) CT scans by 3 separate observers.
+### This script is intended to compare results of pathology assessment of porous cranial lesions from multiple viewing modalities ( 1) direct observation, 2)photos and 3) CT scans) by 3 separate observers.
+In it I calculate percent agreement (within-modality across observers, and within-observer across modalities)
 
-Data are the work of Anderson, Sutherland, and Campbell (2019)
+Data are the work of Anderson, Sutherland, and Campbell (2019). CT scans from which the data are drawn are courtesy of Dave Hunt and the Smithsonian National Museum of Natural History, and the Tsimane Health and Life History Project in collaboration with the Horus Group.
 
 ```{r, warnings  = FALSE}
+# load necessary packages
 library(tidyverse)
 library(janitor)
 library(tidyr)
@@ -25,20 +27,42 @@ library(irr)
 ```{r}
 anon_key <- read_csv("nmnh_anonymize_key.csv")
 
-aa_scans <- read_csv("anderson_nmnh_scans.csv")
-aa_direct <- read_csv("anderson_nmnh_direct_observation.csv")
-aa_photos <- read_csv("anderson_nmnh_photo_scores.csv")
+aa_direct <- read_csv("anderson_nmnh_direct_observation.csv") %>%
+  clean_names()
 
-gc_scans <- read_csv("campbell_nmnh_scans.csv")
-gc_photos <- read_csv("campbell_nmnh_scores_photos.csv")
+aa_photos <- read_csv("anderson_nmnh_photo_scores.csv") %>%
+  clean_names()
+gc_photos <- read_csv("campbell_nmnh_scores_photos.csv") %>%
+clean_names()
+#ls_photos <- read_csv("linda's scores.csv")
+
+aa_scans <- read_csv("anderson_nmnh_scans.csv") %>%
+  clean_names()
+gc_scans <- read_csv("campbell_nmnh_scans - campbell_nmnh_scans.csv") %>%
+  clean_names()
+#ls_scans <- read_csv("linda's scans.csv")
+
+
 
 ```
 ### Data Wrangling
-I want a variable for viewing modality, with binary presence/absence data about the lesions:
-1. Convert 'direct score' into a binary
-2. gather 2d, 3d, and direct binary variables into one
-3. code modality as a factor
-4. Make a table for  skull, grouped observer
+I want to combine all scores into a single data frame. For tidy data, I need an 'observer' column and a 'modality' column. For most IRR analyses I want binary presence/absence data. 
+
+1. Combine data frames by merging on cranial ID
+2. Mutate: 
+ - create an 'observer' variable
+ - create a variable for each modality frame specifying modality (photo, 2d etc.)
+3. gather modality variables (2d, 3d, photo, direct) into one 'modality' column
+4. Mutate:
+ - create a binary from 'direct score'
+ 
+??3. code modality as a factor
+
+
+#### First, before merging data frames,
+make sure all data frames share variable names and classes for key columns
+
+Clean and wrangle Anderson's data
 
 ```{r}
 
@@ -52,111 +76,92 @@ rename(cranium_id = anonymized_id) %>%
 
 
 ## Direct observation scores (Anderson)
-aa_direct_co <- aa_direct %>%
-  rename("nmnh_id" = "Specimen No.", #rename ID variable match other data frames
-         "orbit_direct_score" = "orbit_score") %>%
-  mutate(nmnh_id = as.character(nmnh_id)) %>%
-  mutate(orbit_direct_binary = if_else(orbit_direct_score == 0, 0, 1)) %>% #convert direct score into a binary
-  select(c("nmnh_id", 
-           "orbit_direct_score", 
-           "orbit_direct_binary"))
+aa_direct <- aa_direct %>%
+  rename("nmnh_id" = "specimen_no") %>% #rename ID variable match other data frames
+  mutate(nmnh_id = as.character(nmnh_id),
+         observer = "aa") %>% # create Observer variable
+  rename(orbit_score_direct = orbit_score,
+         vault_score_direct = vault_score) %>%
+  # retain only useful columns
+  select(nmnh_id, 
+         sex, 
+         age, 
+         orbit_score_direct, 
+         vault_score_direct, 
+         observer) 
 
 
 
 ## Anderson's scores from photos 
 #
-aa_photos_co <- aa_photos %>%
+aa_photos <- aa_photos %>%
   filter(cranium_id != "H") %>%
- mutate(orbit_photo_score = replace_na(orbit_score, 0)) %>% # replace NAs with 0's. There aren't photos b/c I didn't take photos of non-pathological orbits
-  mutate(orbit_photo_binary = if_else(orbit_score == 0,0,1)) %>% # create binary presence/absence score from photo scores
-  select(-vault_score, -orbit_score) %>% # remove vault scores, since this data frame focuses on orbital scores
- mutate(observer = "aa")
-
+ mutate(orbit_score = replace_na(orbit_score, 0)) %>% # replace NAs with 0's. There aren't photos b/c I didn't take photos of non-pathological orbits
+ mutate(observer = "aa")%>% # create Observer variable
+rename(orbit_score_photo = orbit_score,
+       vault_score_photo = vault_score)
+  
 
 ## Anderson's scores from scans
 #
-aa_scans_co <- aa_scans %>%
+aa_scans <- aa_scans %>%
   mutate(nmnh_id = as.character(cranium_id)) %>%
   mutate(observer = "aa") %>%
+  rename(orbit_score_scan = rinaldo_score_co,
+         vault_score_scan = rinaldo_score_ph) %>%
   select(c("nmnh_id", 
-           "2d_orbital_roof_discontinuity", 
-           "3d_co_visible", 
+           "x2d_max_calvarial_width",
+           "x2d_radial_diploe":"x2d_calvarial_surface_discontinuity",
+           "x2d_orbital_marrow_width":"x3d_ph_visible",
+           "vault_score_scan",
+           "x3d_co_visible", 
            "observer",
-           "Rinaldo_score_CO"))
+           "orbit_score_scan")) 
 
 
 
 ## Merge all of Anderson's scores from all modalities
-aa_scores_co <- anon_key %>%
-  inner_join(aa_direct_co) %>%
-  inner_join(aa_photos_co) %>%
-  inner_join(aa_scans_co) %>%
-  rename(scan_2d = "2d_orbital_roof_discontinuity",
-         scan_3d = "3d_co_visible") 
-
-# Create data frame with just binary presence/absence variables
-aa_co_binary <- aa_scores_co %>%
-  select(orbit_direct_binary, orbit_photo_binary, scan_2d, scan_3d) 
-
-# Anderson presence/absence totals for each viewing modality
-aa_totals_co <-  colSums(aa_co_binary, na.rm = TRUE)
-
-
-
-# clean and filter Campbell scan observations to merge with other data
-gc_scores <- gc_scans %>%
-  rename(cranium_id = "0",
-  scan_2d = "2d_orbital_marrow_width",
-  scan_3d = "3d_co_visible") %>%
-#,
-        # orbital_marrow_width_2d = "2d_orbital_roof_discontinuity") %>%
-  mutate(nmnh_id = as.character(cranium_id),
-         observer = "gc",
-         orbit_direct_score = NA) %>% 
-   select(c(nmnh_id, 
-            scan_2d, 
-            scan_3d, 
-            observer, 
-            orbit_direct_score,
-            Rinaldo_score_CO)) %>%
-  inner_join(anon_key) %>% # connect anonymization key
-  inner_join(gc_photos) %>% # add photo scores
-  mutate(orbit_photo_binary = if_else(orbit_photo_score == 0,0,1)) # create binary presence/absence score from photo scores
-
-gc_scores_co <- gc_scores %>%
-  select(-vault_photo_score)
-
- 
-  
-  
-# Calculate Campbell's presence/absence totals for each modality
-gc_totals_co <- gc_scores_co %>%
-  select(orbit_photo_binary, scan_2d, scan_3d) %>%
-  colSums()
-
-
-
-
-
-
-all_scores <- aa_scores_co %>%
-  rbind(gc_scores_co)
-
-co_scan_presence <- aa_scans %>%
-  mutate(cranium_id = as_factor(cranium_id)) %>%
-  mutate(observer = "aa") %>%
-  select(c("cranium_id", 
-           "2d_orbital_roof_discontinuity", 
-           "3d_co_visible", 
-           "observer")) %>%
-  inner_join(aa_direct_co) 
-
-%>%
-  rbind(gc_scans_co)
+aa_scores<- anon_key %>%
+  inner_join(aa_direct, by = "nmnh_id") %>%
+  inner_join(aa_photos, by = "cranium_id") %>%
+  inner_join(aa_scans, by = "nmnh_id")  
 ```
 
 
 
+#### Clean and wrangle data from Campbell's observations
+
+```{r}
+# clean and filter Campbell scan observations to merge with other data
+gc_scores <- gc_scans %>%
+  rename(cranium_id = "x0",
+  "x2d_orbital_roof_discontinuity" = "x2d_orbital_marrow_width",
+  "x2d_orbital_marrow_width" =  "x2d_orbital_roof_discontinuity", # data entry for these two variables was clearly switched in the raw data file
+  orbit_score_scan = rinaldo_score_co) %>%
+  mutate(nmnh_id = as.character(cranium_id),
+         observer = "gc",
+         orbit_direct_score = NA,
+         vault_score_scan = as.numeric(rinaldo_score_ph)) %>% 
+   select(c("nmnh_id", 
+           "x2d_max_calvarial_width",
+           "x2d_radial_diploe":"x2d_calvarial_surface_discontinuity",
+           "x2d_orbital_marrow_width":"x3d_ph_visible",
+           "vault_score_scan",
+           "x3d_co_visible", 
+           "observer",
+           "orbit_score_scan")) %>%
+  inner_join(anon_key) %>% # connect anonymization key
+  inner_join(gc_photos) # add photo scores
+
+
+
+```
+
+#### Combine data from all observers into a single data frame
+and create tidy data (!!!)
+```{r}
+
+```
 
 
 
