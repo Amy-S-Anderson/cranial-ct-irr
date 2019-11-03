@@ -1,0 +1,202 @@
+---
+title: "pcl_interobserver_test_nmnh"
+author: "Amy Anderson"
+date: "10/15/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### This script is intended to compare results of cranial pathology assessment of porous lesions from 1) photos and 2) CT scans by 3 separate observers.
+
+Data are the work of Anderson, Sutherland, and Campbell (2019)
+
+```{r, warnings  = FALSE}
+library(tidyverse)
+library(janitor)
+library(tidyr)
+library(irr)
+```
+
+
+#### Load in the data files
+```{r}
+anon_key <- read_csv("nmnh_anonymize_key.csv")
+
+aa_scans <- read_csv("anderson_nmnh_scans.csv")
+aa_direct <- read_csv("anderson_nmnh_direct_observation.csv")
+aa_photos <- read_csv("anderson_nmnh_photo_scores.csv")
+
+gc_scans <- read_csv("campbell_nmnh_scans.csv")
+gc_photos <- read_csv("campbell_nmnh_scores_photos.csv")
+
+```
+### Data Wrangling
+I want a variable for viewing modality, with binary presence/absence data about the lesions:
+1. Convert 'direct score' into a binary
+2. gather 2d, 3d, and direct binary variables into one
+3. code modality as a factor
+4. Make a table for  skull, grouped observer
+
+```{r}
+
+## Anonymization key. 
+#
+anon_key <- anon_key %>%
+  filter(anonymized_id != "H") %>% # remove erroneous "H" designation (refers to nothing) 
+rename(cranium_id = anonymized_id) %>%
+  mutate(nmnh_id = as.character(nmnh_id))
+
+
+
+## Direct observation scores (Anderson)
+aa_direct_co <- aa_direct %>%
+  rename("nmnh_id" = "Specimen No.", #rename ID variable match other data frames
+         "orbit_direct_score" = "orbit_score") %>%
+  mutate(nmnh_id = as.character(nmnh_id)) %>%
+  mutate(orbit_direct_binary = if_else(orbit_direct_score == 0, 0, 1)) %>% #convert direct score into a binary
+  select(c("nmnh_id", 
+           "orbit_direct_score", 
+           "orbit_direct_binary"))
+
+
+
+## Anderson's scores from photos 
+#
+aa_photos_co <- aa_photos %>%
+  filter(cranium_id != "H") %>%
+ mutate(orbit_photo_score = replace_na(orbit_score, 0)) %>% # replace NAs with 0's. There aren't photos b/c I didn't take photos of non-pathological orbits
+  mutate(orbit_photo_binary = if_else(orbit_score == 0,0,1)) %>% # create binary presence/absence score from photo scores
+  select(-vault_score, -orbit_score) %>% # remove vault scores, since this data frame focuses on orbital scores
+ mutate(observer = "aa")
+
+
+## Anderson's scores from scans
+#
+aa_scans_co <- aa_scans %>%
+  mutate(nmnh_id = as.character(cranium_id)) %>%
+  mutate(observer = "aa") %>%
+  select(c("nmnh_id", 
+           "2d_orbital_roof_discontinuity", 
+           "3d_co_visible", 
+           "observer",
+           "Rinaldo_score_CO"))
+
+
+
+## Merge all of Anderson's scores from all modalities
+aa_scores_co <- anon_key %>%
+  inner_join(aa_direct_co) %>%
+  inner_join(aa_photos_co) %>%
+  inner_join(aa_scans_co) %>%
+  rename(scan_2d = "2d_orbital_roof_discontinuity",
+         scan_3d = "3d_co_visible") 
+
+# Create data frame with just binary presence/absence variables
+aa_co_binary <- aa_scores_co %>%
+  select(orbit_direct_binary, orbit_photo_binary, scan_2d, scan_3d) 
+
+# Anderson presence/absence totals for each viewing modality
+aa_totals_co <-  colSums(aa_co_binary, na.rm = TRUE)
+
+
+
+# clean and filter Campbell scan observations to merge with other data
+gc_scores <- gc_scans %>%
+  rename(cranium_id = "0",
+  scan_2d = "2d_orbital_marrow_width",
+  scan_3d = "3d_co_visible") %>%
+#,
+        # orbital_marrow_width_2d = "2d_orbital_roof_discontinuity") %>%
+  mutate(nmnh_id = as.character(cranium_id),
+         observer = "gc",
+         orbit_direct_score = NA) %>% 
+   select(c(nmnh_id, 
+            scan_2d, 
+            scan_3d, 
+            observer, 
+            orbit_direct_score,
+            Rinaldo_score_CO)) %>%
+  inner_join(anon_key) %>% # connect anonymization key
+  inner_join(gc_photos) %>% # add photo scores
+  mutate(orbit_photo_binary = if_else(orbit_photo_score == 0,0,1)) # create binary presence/absence score from photo scores
+
+gc_scores_co <- gc_scores %>%
+  select(-vault_photo_score)
+
+ 
+  
+  
+# Calculate Campbell's presence/absence totals for each modality
+gc_totals_co <- gc_scores_co %>%
+  select(orbit_photo_binary, scan_2d, scan_3d) %>%
+  colSums()
+
+
+
+
+
+
+all_scores <- aa_scores_co %>%
+  rbind(gc_scores_co)
+
+co_scan_presence <- aa_scans %>%
+  mutate(cranium_id = as_factor(cranium_id)) %>%
+  mutate(observer = "aa") %>%
+  select(c("cranium_id", 
+           "2d_orbital_roof_discontinuity", 
+           "3d_co_visible", 
+           "observer")) %>%
+  inner_join(aa_direct_co) 
+
+%>%
+  rbind(gc_scans_co)
+```
+
+
+
+
+
+
+Presence/Absence IRR can be calculated for pairs of observers (Cohen's kappa, unweighted) or across multiple observers (Fleiss's kappa).
+
+IRR of ordinal scores can only be calculated for pairs of observers, using a weighted Cohen's kappa
+
+Calculate IRR for Anderson's and Campbell's presence/absence scores (Cohen's kappa)
+```{r}
+# Cohen's k for orbit photo scores (presence/absence)
+
+```
+
+
+
+
+Now, calculate the percent agreement between Anderson's and Campbell's scores for each modality - first presence/absence, then full scores
+```{r}
+
+```
+
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

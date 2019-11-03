@@ -1,0 +1,23 @@
+﻿0,2d_max_calvarial_width,2d_max_width_bone,2d_radial_diploe,2d_ectocranial_pitting,2d_calvarial_surface_discontinuity,2d_ph_notes,2d_orbital_marrow_width,2d_orbital_roof_discontinuity,3d_ph_visible,3d_ph_bone,Rinaldo_score_PH,3d_ph_notes,3d_co_visible,Rinaldo_score_CO,3d_co_notes,HFI,general_notes
+264543,11,frontal,1,1,1,"either ectocranial pitting or calvarial discontinuity seen on frontal, both parietals, and the occipital bones",1,5.5,1,"frontal, left and right parietal, occipital","frontal: 3, left parietal: 3, right parietal: 3, occipital: 1",,0,0,NA,0,NA
+266027,11,frontal,1,1,1,occipital bone is the only calvarial bone that shows only ectocranial pitting with no true porosities,1,4.9,1,"frontal, left and right parietal, occipital","frontal: 3, left parietal:3, right  parietal: 3, occipital:1 ",,1,1,NA,0,NA
+266487,8,right parietal ,1,1,0,NA,0,2.9,0,NA,0,only pitting: parietals and occipitals,0,0,NA,0,NA
+266562,11,frontal ,0,1,0,NA,1,3.8,0,NA,0,NA,1,3,NA,0,NA
+267097,8.3,frontal ,1,0,0,NA,0,1.5,0,NA,0,NA,0,0,"much of orbital roof not caputured by CT scan, can be seen in 3d reconstruction",0,NA
+266148,8.7,right parietal ,1,0,1,2 true porosities observed on frontal bone ,1,3.7,1,"frontal, right parietal","frontal: 1, right parietal: 1",,1,2,NA,0,NA
+266316,8.3,right parietal ,0,0,0,NA,0,4.4,0,NA,0,NA,1,1,NA,0,NA
+266399,15,frontal,1,1,0,ectocranial cortical bone shows no signs of thinning,1,6,1,"frontal, right parietal",2,"frontal: 2, right parietal: 1",1,2,NA,0,NA
+266741,7.7,right parietal1,1,1,1,the true porosity pictured for 2d_calvarial_surface_discontinuity is on the edge of meeting the diploe and observer clasified it tentatively as a true porosity,1,2.2,1,"occipital, left and right parietal ",1,"left parietal: 1, right parietal: 1, occiptial: 2",1,2,NA,0,NA
+266748,7.8,left parietal ,1,1,0,NA,1,4.5,1,left and right parietal ,1,left and right parietal:  1,1,3,NA,0,NA
+266926,11,occipital,1,1,0,NA,0,1.9,0,NA,0,NA,0,0,NA,0,NA
+267071,11,right parietal ,1,1,0,NA,0,2.8,1,"occipital, left and right parietal ",1,NA,0,0,NA,0,NA
+267107,7.7,frontal ,1,1,0,NA,1,6.2,0,NA,0,NA,1,2,NA,0,NA
+267150,7.7,left parietal ,1,1,1,right parietal,0,1.7,1,left and right parietal ,2,NA,0,0,NA,0,NA
+267171,9.5,left parietal ,1,1,0,NA,0,1.3,1,"left and right parietal, occipital ",1,"pitting appears shallow, with no darkness or shadows indicating they go through to the marrow space",0,0,NA,0,NA
+267182,9.4,frontal,0,1,0,NA,1,2.9,1,NA,0,"some hint of pitting, but not enough for me to classify as PH",1,1,"very slight, which aligns with the few surface discontinuities in the 2d viewer",0,extra parafrontal sinus?
+267186,8.3,right parietal ,1,1,0,NA,1,4.5,0,NA,0,NA,1,3,NA,0,NA
+267197,7.8,right parietal ,1,0,0,NA,1,1.9,0,NA,0,NA,1,2,NA,0,NA
+267200,7.8,frontal,1,1,0,NA,1,2,1,NA,1,"pitting appears shallow, with no darkness or shadows indicating they go through to the marrow space",1,1,NA,0,NA
+267208,7.6,right parietal1,1,0,0,3 very shallow spaced out pits noted,0,1.9,0,NA,0,NA,0,0,NA,0,NA
+267641,12,frontal,1,1,1,"left and right parietal, occipital",1,5,1,left and right parietal ,1,NA,1,1,NA,0,extremely expanded diploe and a widened marrow space
+268028,10,left parietal ,1,1,1,occipital,0,2.7,1,occipital,1,NA,0,0,NA,0,NA
