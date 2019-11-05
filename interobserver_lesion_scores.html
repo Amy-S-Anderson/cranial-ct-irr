@@ -371,124 +371,29 @@ summary {
 </div>
 
 
-<div id="this-script-is-intended-to-compare-results-of-pathology-assessment-of-porous-cranial-lesions-from-multiple-viewing-modalities-1-direct-observation-2photos-and-3-ct-scans-by-3-separate-observers." class="section level3">
-<h3>This script is intended to compare results of pathology assessment of porous cranial lesions from multiple viewing modalities ( 1) direct observation, 2)photos and 3) CT scans) by 3 separate observers.</h3>
+<p>still need to look up again how to stop Rmd from printing out all the sausage-making….</p>
+<pre class="r"><code>knitr::opts_chunk$set(echo = TRUE, message = FALSE)</code></pre>
+<p>This script is intended to compare results of pathology assessment of porous cranial lesions from multiple viewing modalities ( 1) direct observation, 2)photos and 3) CT scans) by 3 separate observers.</p>
 <p>In it I calculate percent agreement (within-modality across observers, and within-observer across modalities)</p>
 <p>Data are the work of Anderson, Sutherland, and Campbell (2019). CT scans from which the data are drawn are courtesy of Dave Hunt and the Smithsonian National Museum of Natural History, and the Tsimane Health and Life History Project in collaboration with the Horus Group.</p>
-<pre class="r"><code># load necessary packages
-library(tidyverse)</code></pre>
-<pre><code>## -- Attaching packages --------------------------------------- tidyverse 1.2.1 --</code></pre>
-<pre><code>## v ggplot2 3.2.0     v purrr   0.3.2
-## v tibble  2.1.3     v dplyr   0.8.3
-## v tidyr   0.8.3     v stringr 1.4.0
-## v readr   1.3.1     v forcats 0.4.0</code></pre>
-<pre><code>## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
-## x dplyr::filter() masks stats::filter()
-## x dplyr::lag()    masks stats::lag()</code></pre>
-<pre class="r"><code>library(janitor)</code></pre>
-<pre><code>## 
-## Attaching package: &#39;janitor&#39;</code></pre>
-<pre><code>## The following objects are masked from &#39;package:stats&#39;:
-## 
-##     chisq.test, fisher.test</code></pre>
-<pre class="r"><code>library(tidyr)
-library(irr)</code></pre>
-<pre><code>## Loading required package: lpSolve</code></pre>
 <div id="load-in-the-data-files" class="section level4">
-<h4>Load in the data files</h4>
-<pre class="r"><code>anon_key &lt;- read_csv(&quot;nmnh_anonymize_key.csv&quot;)</code></pre>
-<pre><code>## Parsed with column specification:
-## cols(
-##   nmnh_id = col_double(),
-##   anonymized_id = col_character()
-## )</code></pre>
-<pre class="r"><code>aa_direct &lt;- read_csv(&quot;anderson_nmnh_direct_observation.csv&quot;) %&gt;%
-  clean_names()</code></pre>
-<pre><code>## Parsed with column specification:
-## cols(
-##   `Specimen No.` = col_double(),
-##   Sex = col_character(),
-##   Age = col_character(),
-##   `Age Notes` = col_character(),
-##   vault_score = col_double(),
-##   orbit_score = col_double(),
-##   Description = col_character(),
-##   Indications = col_character(),
-##   Photos = col_character(),
-##   Notes = col_character()
-## )</code></pre>
-<pre class="r"><code>aa_photos &lt;- read_csv(&quot;anderson_nmnh_photo_scores.csv&quot;) %&gt;%
-  clean_names()</code></pre>
-<pre><code>## Parsed with column specification:
-## cols(
-##   cranium_id = col_character(),
-##   vault_score = col_double(),
-##   orbit_score = col_double()
-## )</code></pre>
-<pre class="r"><code>gc_photos &lt;- read_csv(&quot;campbell_nmnh_scores_photos.csv&quot;) %&gt;%
-clean_names()</code></pre>
-<pre><code>## Parsed with column specification:
-## cols(
-##   cranium_id = col_character(),
-##   vault_photo_score = col_double(),
-##   orbit_photo_score = col_double()
-## )</code></pre>
-<pre class="r"><code>#ls_photos &lt;- read_csv(&quot;linda&#39;s scores.csv&quot;)
-
-aa_scans &lt;- read_csv(&quot;anderson_nmnh_scans.csv&quot;) %&gt;%
-  clean_names()</code></pre>
-<pre><code>## Parsed with column specification:
-## cols(
-##   cranium_id = col_double(),
-##   `2d_max_calvarial_width` = col_double(),
-##   `2d_max_width_bone` = col_character(),
-##   `2d_radial_diploe` = col_double(),
-##   `2d_ectocranial_pitting` = col_double(),
-##   `2d_calvarial_surface_discontinuity` = col_double(),
-##   `2d_ph_notes` = col_character(),
-##   `2d_orbital_marrow_width` = col_double(),
-##   `2d_orbital_roof_discontinuity` = col_double(),
-##   `3d_ph_visible` = col_double(),
-##   `3d_ph_bone` = col_character(),
-##   Rinaldo_score_PH = col_double(),
-##   `3d_ph_notes` = col_character(),
-##   `3d_co_visible` = col_double(),
-##   Rinaldo_score_CO = col_double(),
-##   `3d_co_notes` = col_character(),
-##   HFI = col_double(),
-##   general_notes = col_character()
-## )</code></pre>
-<pre class="r"><code>gc_scans &lt;- read_csv(&quot;campbell_nmnh_scans - campbell_nmnh_scans.csv&quot;) %&gt;%
-  clean_names()</code></pre>
-<pre><code>## Parsed with column specification:
-## cols(
-##   `0` = col_double(),
-##   `2d_max_calvarial_width` = col_double(),
-##   `2d_max_width_bone` = col_character(),
-##   `2d_radial_diploe` = col_double(),
-##   `2d_ectocranial_pitting` = col_double(),
-##   `2d_calvarial_surface_discontinuity` = col_double(),
-##   `2d_ph_notes` = col_character(),
-##   `2d_orbital_marrow_width` = col_double(),
-##   `2d_orbital_roof_discontinuity` = col_double(),
-##   `3d_ph_visible` = col_double(),
-##   `3d_ph_bone` = col_character(),
-##   Rinaldo_score_PH = col_double(),
-##   `3d_ph_notes` = col_character(),
-##   `3d_co_visible` = col_double(),
-##   Rinaldo_score_CO = col_double(),
-##   `3d_co_notes` = col_character(),
-##   HFI = col_double(),
-##   general_notes = col_character()
-## )</code></pre>
-<pre class="r"><code>#ls_scans &lt;- read_csv(&quot;linda&#39;s scans.csv&quot;)</code></pre>
+<h4>Load in the data files:</h4>
+<ul>
+<li>anonymization key (so that observers do not connect cranium ID from photos to cranium ID when viewing scans)</li>
+<li><p>Anderson’s direct observation scores</p></li>
+<li>Anderson’s photo scores</li>
+<li>Campbell’s photo scores</li>
+<li><p>Sutherland’s photo scores</p></li>
+<li>Anderson’s scan scores</li>
+<li>Campbell’s scan scores</li>
+<li><p>Sutherland’s scan scores</p></li>
+</ul>
 </div>
-</div>
-<div id="data-wrangling" class="section level3">
-<h3>Data Wrangling</h3>
+<div id="data-wrangling" class="section level2">
+<h2>Data Wrangling</h2>
 <p>I want to combine all scores into a single data frame. For tidy data, I need an ‘observer’ column and a ‘modality’ column. For most IRR analyses I want binary presence/absence data.</p>
 <ol style="list-style-type: decimal">
-<li>Combine data frames by merging on cranial ID</li>
+<li>Clean names across multiple spreadsheets</li>
 <li>Mutate:</li>
 </ol>
 <ul>
@@ -496,130 +401,201 @@ aa_scans &lt;- read_csv(&quot;anderson_nmnh_scans.csv&quot;) %&gt;%
 <li>create a variable for each modality frame specifying modality (photo, 2d etc.)</li>
 </ul>
 <ol start="3" style="list-style-type: decimal">
-<li>gather modality variables (2d, 3d, photo, direct) into one ‘modality’ column</li>
-<li>Mutate:</li>
+<li>Make data long: gather modality variables (2d, 3d, photo, direct) into one ‘modality’ column</li>
+<li>Combine data frames by merging on cranial ID</li>
+<li>Mutate: create a binary presence/absence score</li>
 </ol>
-<ul>
-<li>create a binary from ‘direct score’</li>
-</ul>
-<p>??3. code modality as a factor</p>
-<div id="first-before-merging-data-frames" class="section level4">
-<h4>First, before merging data frames,</h4>
-<p>make sure all data frames share variable names and classes for key columns</p>
-<p>Clean and wrangle Anderson’s data</p>
+<div id="cleanwrangle-anonymization-key-andersons-direct-observation-data" class="section level4">
+<h4>Clean/wrangle Anonymization Key, <em>Anderson’s Direct Observation data</em></h4>
 <pre class="r"><code>## Anonymization key. 
-#
 anon_key &lt;- anon_key %&gt;%
   filter(anonymized_id != &quot;H&quot;) %&gt;% # remove erroneous &quot;H&quot; designation (refers to nothing) 
 rename(cranium_id = anonymized_id) %&gt;%
   mutate(nmnh_id = as.character(nmnh_id))
 
 
-
 ## Direct observation scores (Anderson)
-aa_direct &lt;- aa_direct %&gt;%
+aa_direct&lt;- aa_direct %&gt;%
   rename(&quot;nmnh_id&quot; = &quot;specimen_no&quot;) %&gt;% #rename ID variable match other data frames
   mutate(nmnh_id = as.character(nmnh_id),
-         observer = &quot;aa&quot;) %&gt;% # create Observer variable
-  rename(orbit_score_direct = orbit_score,
-         vault_score_direct = vault_score) %&gt;%
+         modality = &quot;direct&quot;,
+         observer = &quot;aa&quot;) %&gt;% # create &#39;modality&#39; variable
+
+    
+## transform data to &#39;long&#39; rather than &#39;wide&#39;
+  pivot_longer(cols = c(orbit_score, vault_score), names_to = &quot;criterion&quot;, values_to = &quot;score&quot;) %&gt;%
+  #rename(orbit_score_direct = orbit_score,
+      #   vault_score_direct = vault_score) %&gt;%
   # retain only useful columns
   select(nmnh_id, 
          sex, 
          age, 
-         orbit_score_direct, 
-         vault_score_direct, 
-         observer) 
-
-
-
-## Anderson&#39;s scores from photos 
-#
+         criterion,
+         score,
+         modality, 
+         observer) </code></pre>
+</div>
+<div id="cleanwrangle-andersons-photo-data" class="section level4">
+<h4>Clean/wrangle <em>Anderson’s Photo data</em></h4>
+<pre class="r"><code>## lots to tidy here
 aa_photos &lt;- aa_photos %&gt;%
   filter(cranium_id != &quot;H&quot;) %&gt;%
  mutate(orbit_score = replace_na(orbit_score, 0)) %&gt;% # replace NAs with 0&#39;s. There aren&#39;t photos b/c I didn&#39;t take photos of non-pathological orbits
- mutate(observer = &quot;aa&quot;)%&gt;% # create Observer variable
-rename(orbit_score_photo = orbit_score,
-       vault_score_photo = vault_score)
-  
-
-## Anderson&#39;s scores from scans
-#
-aa_scans &lt;- aa_scans %&gt;%
-  mutate(nmnh_id = as.character(cranium_id)) %&gt;%
-  mutate(observer = &quot;aa&quot;) %&gt;%
-  rename(orbit_score_scan = rinaldo_score_co,
-         vault_score_scan = rinaldo_score_ph) %&gt;%
-  select(c(&quot;nmnh_id&quot;, 
-           &quot;x2d_max_calvarial_width&quot;,
-           &quot;x2d_radial_diploe&quot;:&quot;x2d_calvarial_surface_discontinuity&quot;,
-           &quot;x2d_orbital_marrow_width&quot;:&quot;x3d_ph_visible&quot;,
-           &quot;vault_score_scan&quot;,
-           &quot;x3d_co_visible&quot;, 
-           &quot;observer&quot;,
-           &quot;orbit_score_scan&quot;)) 
-
-
-
-## Merge all of Anderson&#39;s scores from all modalities
-aa_scores&lt;- anon_key %&gt;%
-  inner_join(aa_direct, by = &quot;nmnh_id&quot;) %&gt;%
-  inner_join(aa_photos, by = &quot;cranium_id&quot;) %&gt;%
-  inner_join(aa_scans, by = &quot;nmnh_id&quot;)  </code></pre>
+ mutate(modality = &quot;photo&quot;, # create modality variable
+      observer = &quot;aa&quot;)%&gt;%
+  pivot_longer(cols = c(orbit_score, 
+                        vault_score), 
+               names_to = &quot;criterion&quot;, 
+               values_to = &quot;score&quot;) </code></pre>
 </div>
-<div id="clean-and-wrangle-data-from-campbells-observations" class="section level4">
-<h4>Clean and wrangle data from Campbell’s observations</h4>
-<pre class="r"><code># clean and filter Campbell scan observations to merge with other data
+<div id="cleanwrangle-andersons-scan-data" class="section level4">
+<h4>Clean/wrangle <em>Anderson’s Scan data</em></h4>
+<pre class="r"><code>## Anderson&#39;s scores from scans
+aa_scans &lt;- aa_scans %&gt;%
+  mutate(nmnh_id = as.character(cranium_id)) %&gt;% # numeric museum catalog ID is parsed as a numeric. Change that.
+  mutate(observer = &quot;aa&quot;) %&gt;%
+  rename(orbit_score = rinaldo_score_co,
+         vault_score = rinaldo_score_ph) %&gt;%
+  # put all cranial measurements in &#39;long format&#39;
+  pivot_longer(cols = c(x2d_max_calvarial_width,
+                        x2d_orbital_marrow_width), 
+               names_to = &quot;measurement&quot;, 
+               values_to = &quot;mm&quot;) %&gt;%
+# group all presence/absence and ordinal indices together in &#39;long&#39; format
+pivot_longer(cols = c(x2d_radial_diploe:x2d_calvarial_surface_discontinuity,
+                      x2d_orbital_roof_discontinuity, 
+                      x3d_ph_visible, 
+                      vault_score,
+                      x3d_co_visible, 
+                      orbit_score), 
+             names_to = &quot;criterion&quot;, 
+             values_to = &quot;score&quot;) %&gt;%
+# remove columns with general context and notes
+  select(-(x2d_max_width_bone:general_notes)) %&gt;%
+# specify 2d or 3d modality based on the criterion in a row
+  mutate(modality = if_else(grepl(&#39;^x2d&#39;, criterion), &quot;scan_2d&quot;, &quot;scan_3d&quot;))</code></pre>
+</div>
+<div id="join-all-modality-data-frames-into-a-single-data-frame-in-tidy-format-of-all-anderson-data" class="section level4">
+<h4>Join all modality data frames into a single data frame in tidy format of <em>All Anderson Data</em></h4>
+<pre class="r"><code>## Tidy dataframe for each modality
+aa_direct_tidy &lt;-anon_key %&gt;%
+  inner_join(aa_direct, by = &quot;nmnh_id&quot;)%&gt;%
+    select(nmnh_id, 
+           cranium_id,
+           modality,
+           criterion,
+           score,
+           observer)
+  
+  aa_photos_tidy &lt;- anon_key %&gt;%
+  inner_join(aa_photos, by = &quot;cranium_id&quot;) 
+  
+  aa_scans_tidy &lt;- anon_key %&gt;%
+  inner_join(aa_scans, by = &quot;nmnh_id&quot;) %&gt;%
+    rename(cranium_id = cranium_id.x) %&gt;%
+    select(nmnh_id,
+           cranium_id,
+           modality,
+           criterion,
+           score,
+           observer)
+  
+  
+## merge Anderson data for all three modalities:
+  aa_scores &lt;- rbind(aa_direct_tidy, aa_photos_tidy, aa_scans_tidy) %&gt;%
+# and create a binary presence/absence version for all criteria
+    mutate(score_binary = if_else(score &gt;= 1, 1, 0))  </code></pre>
+<p>Now done wrangling Anderson’s observations (Observer 1). Moving on to Cambpell (Observer 2).</p>
+</div>
+<div id="clean-and-wrangle-data-from-campbells-observations-photos-and-scans" class="section level4">
+<h4>Clean and wrangle data from <em>Campbell’s observations: Photos and Scans</em></h4>
+<pre class="r"><code>## clean and filter Campbell scan observations to merge with photo data
+gc_photos &lt;- gc_photos %&gt;%
+mutate(modality = &quot;photo&quot;)
+
+
 gc_scores &lt;- gc_scans %&gt;%
-  rename(cranium_id = &quot;x0&quot;,
-  &quot;x2d_orbital_roof_discontinuity&quot; = &quot;x2d_orbital_marrow_width&quot;,
-  &quot;x2d_orbital_marrow_width&quot; =  &quot;x2d_orbital_roof_discontinuity&quot;, # data entry for these two variables was clearly switched in the raw data file
-  orbit_score_scan = rinaldo_score_co) %&gt;%
-  mutate(nmnh_id = as.character(cranium_id),
+  rename(&quot;x2d_orbital_roof_discontinuity&quot; = &quot;x2d_orbital_marrow_width&quot;,
+  &quot;x2d_orbital_marrow_width&quot; =  &quot;x2d_orbital_roof_discontinuity&quot;, 
+# data entry for these two variables was clearly switched in the raw data file
+  orbit_score_scan = rinaldo_score_co,
+vault_score_scan = rinaldo_score_ph) %&gt;%
+  mutate(nmnh_id = as.character(x0),
          observer = &quot;gc&quot;,
-         orbit_direct_score = NA,
-         vault_score_scan = as.numeric(rinaldo_score_ph)) %&gt;% 
+         orbit_score_direct = NA, # populate this variable to prep for merging with Anderson data
+         vault_score_direct = NA) %&gt;% 
+# connect anonymization key
+  inner_join(anon_key) %&gt;% 
+# add photo scores
+  inner_join(gc_photos) %&gt;% 
+# consistent naming structure: anatomical area_score_modality
+  rename(orbit_score_photo = orbit_photo_score,
+         vault_score_photo = vault_photo_score) %&gt;%
+# make it tidy: a column for &#39;criterion&#39; and a column with the score for each instance of each criterion observed
+  pivot_longer(cols = c(x2d_radial_diploe:x2d_calvarial_surface_discontinuity,
+                      x2d_orbital_roof_discontinuity, 
+                      x3d_ph_visible, 
+                      vault_score_scan,
+                      x3d_co_visible, 
+                      orbit_score_scan,
+                      orbit_score_direct,
+                      vault_score_direct,
+                      orbit_score_photo,
+                      vault_score_photo), 
+               names_to = &quot;criterion&quot;, 
+               values_to = &quot;score&quot;) %&gt;%
+# all entries from scans have &#39;scan&#39; as the modality. Separate 2d and 3d based on the criteria specific to that modality (now I&#39;m glad I started all my 2d variables with &#39;2d&#39;)
+mutate(modality = if_else(grepl(&#39;^x2d&#39;, criterion), # note: ^ = &#39;starts with&#39;
+                                &quot;scan_2d&quot;, 
+                                &quot;scan_3d&quot;)) %&gt;%
    select(c(&quot;nmnh_id&quot;, 
-           &quot;x2d_max_calvarial_width&quot;,
-           &quot;x2d_radial_diploe&quot;:&quot;x2d_calvarial_surface_discontinuity&quot;,
-           &quot;x2d_orbital_marrow_width&quot;:&quot;x3d_ph_visible&quot;,
-           &quot;vault_score_scan&quot;,
-           &quot;x3d_co_visible&quot;, 
+           &quot;criterion&quot;,
+           &quot;score&quot;,
            &quot;observer&quot;,
-           &quot;orbit_score_scan&quot;)) %&gt;%
-  inner_join(anon_key) %&gt;% # connect anonymization key
-  inner_join(gc_photos) # add photo scores</code></pre>
-<pre><code>## Joining, by = &quot;nmnh_id&quot;</code></pre>
-<pre><code>## Joining, by = &quot;cranium_id&quot;</code></pre>
+           &quot;modality&quot;,
+           &quot;x2d_orbital_marrow_width&quot;, # keep these measures two, for later exploration
+           &quot;x2d_max_calvarial_width&quot;)) %&gt;%
+# finally, create an entirely binary presence/absence version of all criteria scores
+  mutate(binary_score = if_else(score &gt;0, 1, 0))</code></pre>
+</div>
+<div id="clean-and-wrangle-sutherlands-photo-and-scan-data" class="section level4">
+<h4>Clean and Wrangle <em>Sutherland’s photo and scan data</em>:</h4>
+<pre class="r"><code>## Sutherland photo data (scan data coming shortly)
+ls_photos_tidy &lt;- ls_photos%&gt;%
+  filter(cranium != &quot;h&quot;) %&gt;%
+  rename(cranium_id = cranium,
+         vault_score_photo = ph_rinaldo_score,
+         orbit_score_photo = co_rinaldo_score) %&gt;%
+  mutate(cranium_id = toupper(cranium_id),
+         modality = &quot;photo&quot;,
+         observer = &quot;ls&quot;) %&gt;%
+   inner_join(anon_key) %&gt;%
+  pivot_longer(cols = c(vault_score_photo,
+                        orbit_score_photo),
+               names_to = &quot;criterion&quot;,
+               values_to = &quot;score&quot;) %&gt;%
+  # create binary presence/absence version of all criteria scores
+  mutate(binary_score = if_else(score &gt;= 1, 1, 0))
+
+#mutate(vault_photo_binary = if_else(vault_photo_score &gt; 0, 1, 0),
+        # orbit_photo_binary = if_else(orbit_photo_score &gt;= 1, 1, 0)) %&gt;%# REMEMBER!!! lots of NA&#39;s (missing photos) get turned to zeros here: don&#39;t analyze orbital data yet. % Agreement will be artificially inflated.
+# BUT the NAs are being turned to 1&#39;s and I don&#39;t understand why....</code></pre>
+<p>Calculate intra-observer IRR for each observer</p>
+<p>rater.bias() function in the irr package will calculate systematic bias between two observers. &lt;– use this!</p>
 </div>
 <div id="combine-data-from-all-observers-into-a-single-data-frame" class="section level4">
 <h4>Combine data from all observers into a single data frame</h4>
 <p>and create tidy data (!!!)</p>
+<pre class="r"><code># select only columns from Anderson data that match Campbell data</code></pre>
+<p>Now that you have clean data for all of Anderson’s observations, take a look at intra-observer agreement across modalities.</p>
+<p>The first stat of interest is agreement of presence/absence data across direct observation, photos, 2D MPR, and 3D reconstruction</p>
+<p>```</p>
 <p>Presence/Absence IRR can be calculated for pairs of observers (Cohen’s kappa, unweighted) or across multiple observers (Fleiss’s kappa).</p>
 <p>IRR of ordinal scores can only be calculated for pairs of observers, using a weighted Cohen’s kappa</p>
 <p>Calculate IRR for Anderson’s and Campbell’s presence/absence scores (Cohen’s kappa)</p>
 <pre class="r"><code># Cohen&#39;s k for orbit photo scores (presence/absence)</code></pre>
 <p>Now, calculate the percent agreement between Anderson’s and Campbell’s scores for each modality - first presence/absence, then full scores</p>
 </div>
-</div>
-<div id="r-markdown" class="section level2">
-<h2>R Markdown</h2>
-<p>This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <a href="http://rmarkdown.rstudio.com" class="uri">http://rmarkdown.rstudio.com</a>.</p>
-<p>When you click the <strong>Knit</strong> button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:</p>
-<pre class="r"><code>summary(cars)</code></pre>
-<pre><code>##      speed           dist       
-##  Min.   : 4.0   Min.   :  2.00  
-##  1st Qu.:12.0   1st Qu.: 26.00  
-##  Median :15.0   Median : 36.00  
-##  Mean   :15.4   Mean   : 42.98  
-##  3rd Qu.:19.0   3rd Qu.: 56.00  
-##  Max.   :25.0   Max.   :120.00</code></pre>
-</div>
-<div id="including-plots" class="section level2">
-<h2>Including Plots</h2>
-<p>You can also embed plots, for example:</p>
-<p><img src="data:image/png;base64,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" width="672" /></p>
-<p>Note that the <code>echo = FALSE</code> parameter was added to the code chunk to prevent printing of the R code that generated the plot.</p>
 </div>
 
 
