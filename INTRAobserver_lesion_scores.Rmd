@@ -1,0 +1,479 @@
+---
+title: "Intra-observer agreement in scoring porous cranial lesions"
+subtitle: "Direct observation, photograph, CT scan, 3D CT reconstruction"
+author: "Amy Anderson"
+date: "10/15/2019"
+output: html_document
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+```
+
+This script is intended to compare results of pathology assessment of porous cranial lesions from multiple viewing modalities ( 1) direct observation, 2)photos and 3) CT scans) by 3 separate observers.
+
+In it I calculate percent agreement (within-modality across observers, and within-observer across modalities)
+
+Data are the work of Anderson, Sutherland, and Campbell (2019). CT scans from which the data are drawn are courtesy of Dave Hunt and the Smithsonian National Museum of Natural History, and the Tsimane Health and Life History Project in collaboration with the Horus Group.
+
+```{r, include = FALSE}
+# load necessary packages
+library(tidyverse)
+library(janitor)
+library(tidyr)
+library(irr)
+library(corrplot)
+```
+
+
+#### Load in the data files:
+- anonymization key (so that observers do not connect cranium ID from photos to cranium ID when viewing scans)
+- Anderson's direct observation scores
+
+- Anderson's photo scores
+- Campbell's photo scores
+- Sutherland's photo scores
+
+- Anderson's scan scores
+- Campbell's scan scores
+- Sutherland's scan scores
+```{r, include=FALSE}
+anon_key <- read_csv("nmnh_anonymize_key.csv")
+
+aa_direct <- read_csv("anderson_nmnh_direct_observation.csv") %>%
+  clean_names()
+
+aa_photos <- read_csv("anderson_nmnh_photo_scores.csv") %>%
+  clean_names()
+gc_photos <- read_csv("campbell_nmnh_scores_photos.csv") %>%
+clean_names()
+ls_photos <- read_csv("linda_sutherland_photo_scores - Sheet1.csv")
+
+aa_scans <- read_csv("anderson_nmnh_scans.csv") %>%
+  clean_names()
+gc_scans <- read_csv("campbell_nmnh_scans - campbell_nmnh_scans.csv") %>%
+  clean_names()
+#ls_scans <- read_csv("linda's scans.csv")
+
+
+
+```
+## Data Wrangling
+I want to combine all scores into a single data frame. For tidy data, I need an 'observer' column and a 'modality' column. For most IRR analyses I want binary presence/absence data. 
+
+1. Clean names across multiple spreadsheets
+2. Mutate: 
+ - create an 'observer' variable
+ - create a variable for each modality frame specifying modality (photo, 2d etc.)
+3. Make data long: gather modality variables (2d, 3d, photo, direct) into one 'modality' column
+4. Combine data frames by merging on cranial ID
+5. Mutate: create a binary presence/absence score 
+ 
+
+
+#### Clean/wrangle Anonymization Key, *Anderson's Direct Observation data*
+```{r}
+## Anonymization key. 
+anon_key <- anon_key %>%
+  filter(anonymized_id != "H") %>% # remove erroneous "H" designation (refers to nothing) 
+rename(cranium_id = anonymized_id) %>%
+  mutate(nmnh_id = as.character(nmnh_id))
+  
+```
+
+
+
+
+
+
+
+
+
+#### Clean and wrangle Anderson's data: Direct observations
+```{r}
+
+## Direct observation scores (Anderson)
+aa_direct_wide <-aa_direct %>%
+  rename(nmnh_id = specimen_no, 
+          orbit_score_direct = orbit_score,
+         vault_score_direct = vault_score) %>%
+  mutate(nmnh_id = as.character(nmnh_id)) %>%
+  select(nmnh_id,
+  orbit_score_direct,
+  vault_score_direct) %>%
+  mutate(orbit_direct_binary = if_else(orbit_score_direct > 0, 1, 0),
+          vault_direct_binary = if_else(orbit_score_direct > 0, 1, 0))
+```
+
+
+
+#### Clean/wrangle *Anderson's Photo data*
+```{r}
+## 
+aa_photos_wide <- aa_photos %>%
+  filter(cranium_id != "H") %>%
+  rename(vault_score_photo = vault_score) %>%
+ mutate(orbit_score_photo = replace_na(orbit_score, 0)) %>%
+ select(-orbit_score) %>%
+ inner_join(anon_key) %>%
+ mutate(orbit_photo_binary = if_else(orbit_score_photo > 0, 1, 0),
+          vault_photo_binary = if_else(orbit_score_photo > 0, 1, 0))
+
+```
+
+
+
+#### Clean and wrangle Anderson's Scan data
+```{r}
+## Anderson's scores from scans
+aa_scans_wide <- aa_scans %>%
+  mutate(nmnh_id = as.character(cranium_id)) %>% # numeric museum catalog ID is parsed as a numeric. Change that.
+  rename(orbit_score_scan = rinaldo_score_co,
+         vault_score_scan = rinaldo_score_ph,
+         vault_scan_binary = x3d_ph_visible,
+         orbit_scan_binary = x3d_co_visible,
+         ecto_pitting = x2d_ectocranial_pitting,
+         vault_2d_porosity = x2d_calvarial_surface_discontinuity,
+         orbit_2d_porosity = x2d_orbital_roof_discontinuity,
+         hair_on_end = x2d_radial_diploe) %>%
+  select(nmnh_id,
+          orbit_score_scan,
+          vault_score_scan,
+          vault_scan_binary,
+          orbit_scan_binary,
+          ecto_pitting,
+          vault_2d_porosity,
+          orbit_2d_porosity, 
+          hair_on_end)
+  
+  
+```
+
+
+Join Anderson data from all viewing modalities:
+```{r}
+anderson <- aa_direct_wide %>%
+inner_join(aa_photos_wide) %>%
+inner_join(aa_scans_wide) %>%
+select(-cranium_id)
+
+
+## Create presence/absence data frame for orbital scores
+anderson_orbit_binary <- anderson %>%
+select(orbit_direct_binary,
+        orbit_photo_binary,
+        orbit_scan_binary, # 3D visibility of lesions
+        orbit_2d_porosity) # 2D visibility of porosity in orbits
+
+
+## Create presence/absence data frame for vault scores
+anderson_vault_binary <- anderson %>%
+select(vault_direct_binary,
+        vault_photo_binary,
+        vault_scan_binary,
+        vault_2d_porosity,
+        ecto_pitting,
+        hair_on_end) %>%
+# create a 'combined porosity' variable that includes ectocranial pitting OR true porosity
+        mutate(combo_porosity = if_else(ecto_pitting == 1, 1,             
+          if_else(vault_2d_porosity == 1, 1, 0)))
+        
+```
+
+Now done wrangling Anderson's observations (Observer 1). 
+Moving on to Cambpell (Observer 2).
+
+#### Clean and wrangle data from *Campbell's observations: Photos and Scans*
+
+```{r}
+## clean and filter Campbell scan observations to merge with photo data
+gc_photos <- gc_photos %>%
+mutate(modality = "photo")
+
+
+gc_scores <- gc_scans %>%
+  rename("orbit_2d_porosity" = "x2d_orbital_marrow_width",
+  "x2d_orbital_marrow_width" =  "x2d_orbital_roof_discontinuity", 
+# data entry for these two variables was clearly switched in the raw data file
+  orbit_score_scan = rinaldo_score_co,
+  vault_score_scan = rinaldo_score_ph,
+  vault_scan_binary = x3d_ph_visible,
+  orbit_scan_binary = x3d_co_visible,
+  ecto_pitting = x2d_ectocranial_pitting,
+  vault_2d_porosity = x2d_calvarial_surface_discontinuity,
+  hair_on_end = x2d_radial_diploe) %>%
+  mutate(nmnh_id = as.character(x0),
+         observer = "gc",
+         orbit_score_direct = NA, # populate this variable to prep for merging with Anderson data
+         vault_score_direct = NA) %>% 
+# connect anonymization key
+  inner_join(anon_key) %>% 
+# add photo scores
+  inner_join(gc_photos) %>% 
+# consistent naming structure: anatomical area_score_modality
+  rename(orbit_score_photo = orbit_photo_score,
+         vault_score_photo = vault_photo_score) %>%
+  mutate(orbit_photo_binary = if_else(orbit_score_photo > 0, 1, 0),
+         vault_photo_binary = if_else(vault_score_photo > 0, 1, 0)) %>%
+    select(nmnh_id,
+          orbit_score_photo,
+          vault_score_photo,
+          orbit_photo_binary,
+          vault_photo_binary,
+          orbit_score_scan,
+          vault_score_scan,
+          vault_scan_binary,
+          orbit_scan_binary,
+          ecto_pitting,
+          vault_2d_porosity,
+          orbit_2d_porosity, 
+          hair_on_end) %>%
+  # create a 'combined porosity' variable that includes ectocranial pitting OR true porosity
+        mutate(combo_porosity = if_else(ecto_pitting == 1, 1,             
+          if_else(vault_2d_porosity == 1, 1, 0))
+          )
+
+```
+
+
+
+#### Clean and Wrangle *Sutherland's photo and scan data*:
+
+```{r}
+## Sutherland photo data (scan data coming shortly)
+ls_photos_tidy <- ls_photos%>%
+  filter(cranium != "h") %>%
+  rename(cranium_id = cranium,
+         vault_score_photo = ph_rinaldo_score,
+         orbit_score_photo = co_rinaldo_score) %>%
+  mutate(cranium_id = toupper(cranium_id),
+         modality = "photo",
+         observer = "ls") %>%
+   inner_join(anon_key) %>%
+  pivot_longer(cols = c(vault_score_photo,
+                        orbit_score_photo),
+               names_to = "criterion",
+               values_to = "score") %>%
+  # create binary presence/absence version of all criteria scores
+  mutate(binary_score = if_else(score >= 1, 1, 0))
+
+#mutate(vault_photo_binary = if_else(vault_photo_score > 0, 1, 0),
+        # orbit_photo_binary = if_else(orbit_photo_score >= 1, 1, 0)) %>%# REMEMBER!!! lots of NA's (missing photos) get turned to zeros here: don't analyze orbital data yet. % Agreement will be artificially inflated.
+# BUT the NAs are being turned to 1's and I don't understand why....
+```
+
+
+
+Ok, now that you have clean data for all three observers, try this forloop sorcery to iterate the agree() argument and calculate **intra-observer agreement** values across viewing modalities...
+```{r}
+
+## set up a matrix (ncol(anderson_orbit_binary) x ncol(anderson_orbit_binary)) filled with NAs to create a space for the for loop to populate.
+aa_orbit_irr <- matrix(NA, ncol = 4, nrow = 4)
+# assign names to the matrix rows and columns
+rownames(aa_orbit_irr) <- c("direct obs",
+                            "photo",
+                            "3D CT",
+                            "2D CT")
+colnames(aa_orbit_irr) <- rownames(aa_orbit_irr)
+
+
+## BEHOLD, a nested for loop that iterates the agree() function over each pairwise combination of columns in the orbit presence/absence data 
+
+# Anderson Orbit scores
+for(i in 1:ncol(anderson_orbit_binary)){
+  for(j in 1:ncol(anderson_orbit_binary)){
+  if(i == j) 0
+   aa_orbit_irr[i,j] <- (agree(anderson_orbit_binary[,c(i,j)])$value / 100)
+  }
+}
+```
+
+
+... And again for Anderson Vault scores
+```{r}
+aa_vault_irr <- matrix(NA, ncol = 7, nrow = 7)
+# assign names to the matrix rows and columns
+rownames(aa_vault_irr) <- c("direct obs",
+                            "photo",
+                            "3D CT",
+                            "2D CT - porosity",
+                            "2D CT - pitting",
+                            "2d CT porosity/pitting",
+                            "hair-on-end sign")
+colnames(aa_vault_irr) <- rownames(aa_vault_irr)
+
+
+# Anderson Vault scores
+for(i in 1:ncol(anderson_vault_binary)){
+  for(j in 1:ncol(anderson_vault_binary)){
+  if(i == j) 0
+   aa_vault_irr[i,j] <- agree(anderson_vault_binary[,c(i,j)])$value / 100
+  }
+}
+```
+
+
+Create two heatmap correlation tables of Anderson's intraobserver agreement (1. orbits, 2. vaults)
+```{r}
+## for orbits
+orbit_corrplot_aa <- corrplot(corr = aa_orbit_irr, 
+                            method = "color",
+                            type = "lower",
+                     col = colorRampPalette(c("green", "royal blue","red"))(100),
+                     diag = TRUE,
+                     addCoef.col = "white",
+                     tl.col = "black",
+                     cl.lim = c(0,1))
+                     
+## and for vaults
+vault_corrplot_aa <- corrplot(corr = aa_vault_irr, 
+                            method = "color",
+                            type = "lower",
+                     col = colorRampPalette(c("green", "royal blue","red"))(100),
+                     diag = TRUE,
+                     addCoef.col = "white",
+                     tl.col = "black",
+                     cl.lim = c(0,1))
+
+```
+
+
+All right, now that you've managed intra-observer % agreement for Anderson, do it all over again for Campbell
+```{r}
+## create binary data frame for orbit scores
+campbell_orbit_binary <- gc_scores %>%
+select(orbit_photo_binary,
+        orbit_scan_binary, # 3D visibility of lesions
+        orbit_2d_porosity) # 2D visibility of porosity in orbits
+        
+
+## and create binary data frame for vault scores
+campbell_vault_binary <- gc_scores %>%
+select(vault_photo_binary,
+        vault_scan_binary,
+        vault_2d_porosity,
+        ecto_pitting,
+        combo_porosity,
+        hair_on_end)
+
+```
+
+
+Time for a for loop to iterate %A
+```{r}
+## set up a matrix (ncol(campbell_orbit_binary) x ncol(campbelln_orbit_binary)) filled with NAs to create a space for the for loop to populate.
+gc_orbit_irr <- matrix(NA, ncol = 3, nrow = 3)
+# assign names to the matrix rows and columns
+rownames(gc_orbit_irr) <- c("photo",
+                            "3D CT",
+                            "2D CT")
+colnames(gc_orbit_irr) <- rownames(gc_orbit_irr)
+
+
+## and now, a nested for loop that iterates the agree() function over each pairwise combination of columns in the orbit presence/absence data 
+
+# Campbell Orbit scores
+for(i in 1:ncol(campbell_orbit_binary)){
+  for(j in 1:ncol(campbell_orbit_binary)){
+  if(i == j) 0
+   gc_orbit_irr[i,j] <- (agree(campbell_orbit_binary[,c(i,j)])$value / 100)
+    }
+}
+
+
+## Campbell intra-observer agreement, vault scores
+gc_vault_irr <- matrix(NA, ncol = 6, nrow = 6)
+# assign names to the matrix rows and columns
+rownames(gc_vault_irr) <- c("photo",
+                            "3D CT",
+                            "2D CT - porosity",
+                            "2D CT - pitting",
+                            "2d CT porosity/pitting",
+                            "hair-on-end sign")
+colnames(gc_vault_irr) <- rownames(gc_vault_irr)
+
+# for loop for agree() for Campbell's vault observations across modalities
+for(i in 1:ncol(campbell_vault_binary)){
+  for(j in 1:ncol(campbell_vault_binary)){
+  if(i == j) 0
+   gc_vault_irr[i,j] <- (agree(campbell_vault_binary[,c(i,j)])$value / 100)
+    }
+}
+
+```
+
+
+Corrplot heatmap tables of Campbell's intra-observer agreement:
+```{r}
+## for orbits
+orbit_corrplot_gc <- corrplot(corr = gc_orbit_irr, 
+                            method = "color",
+                            type = "lower",
+                     col = colorRampPalette(c("green", "royal blue","red"))(100),
+                     diag = TRUE,
+                     addCoef.col = "white",
+                     tl.col = "black",
+                     cl.lim = c(0,1))
+                     
+## and for vaults
+vault_corrplot_gc <- corrplot(corr = gc_vault_irr, 
+                            method = "color",
+                            type = "lower",
+                     col = colorRampPalette(c("green", "royal blue","red"))(100),
+                     diag = TRUE,
+                     addCoef.col = "white",
+                     tl.col = "black",
+                     cl.lim = c(0,1))
+```
+
+
+...and intra-observer agreement for Sutherland
+```{r}
+
+
+
+```
+
+
+Now, still intra-observer: Let's assume that Anderson's direct observation (DO) data are the 'gold standard' for cranial lesion scores in this sample. I want to take a look at the 'false positive' and 'false negative' rate for each observer in each viewing modality.
+I need to group the crania by ordinal DO score, and calculate the percentage of crania in each score group that were falsely rated as present or absentty
+```{r}
+aa_false_rates <- anderson %>%
+ mutate(photo_false = if_else(orbit_score_direct == 0 &
+                                orbit_score_photo != 0, 1, if_else(orbit_score_direct == 1 |
+                                orbit_score_direct == 2 |
+                                orbit_score_direct == 3 &
+                                orbit_score_photo == 0, 1, 0))) %>%
+  mutate(scan_2d_false = if_else(orbit_score_direct == 0 &
+                                orbit_2d_porosity != 0, 1, if_else(orbit_score_direct == 1 |
+                                orbit_score_direct == 2 |
+                                orbit_score_direct == 3 &
+                                orbit_2d_porosity == 0, 1, 0))) %>%
+mutate(scan_3d_false = if_else(orbit_score_direct == 0 &
+                                orbit_scan_binary != 0, 1, if_else(orbit_score_direct == 1 |
+                                orbit_score_direct == 2 |
+                                orbit_score_direct == 3 &
+                                orbit_scan_binary == 0, 1, 0))) %>%
+  group_by(orbit_score_direct) %>%
+  summarise(photo_error_rate = mean(photo_false),
+            scan_2d_error_rate = mean(scan_2d_false),
+            scan_3d_error_rate = mean(scan_3d_false)) 
+```
+
+
+
+
+
+
+rater.bias() function in the irr package will calculate systematic bias between two observers. <-- use this!
+
+
+Presence/Absence IRR can be calculated for pairs of observers (Cohen's kappa, unweighted) or across multiple observers (Fleiss's kappa).
+
+IRR of ordinal scores can only be calculated for pairs of observers, using a weighted Cohen's kappa
+
+Calculate IRR for Anderson's and Campbell's presence/absence scores (Cohen's kappa)
+```{r}
+# Cohen's k for orbit photo scores (presence/absence)
+
+```
