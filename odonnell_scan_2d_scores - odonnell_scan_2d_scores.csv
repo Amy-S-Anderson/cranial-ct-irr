@@ -1,0 +1,23 @@
+nmnh_id,modality,orbit_2d_porosity_lo,orbital_roof_thickness_lo,true_porosity_2d_lo,ecto_pitting_2d_lo,hair_on_end_lo,notes
+264543,scan_2d,1,5.787mm,1,1,1,
+266027,scan_2d,1,2.7-4.01mm,1,1,1,
+266487,scan_2d,0,2.05mm,1,1,0,
+266562,scan_2d,1,4.6mm,0,0,0,"there is thickening of the vault, but cannot see evidence of porosity"
+267097,scan_2d,0,0.616mm,0,0,0,
+266148,scan_2d,1,2.38mm,0,0,0,"there is thickening of the vault, but cannot see evidence of porosity"
+266316,scan_2d,1,4.68mm,0,0,0,"there is thickening of the vault, but cannot see evidence of porosity"
+266399,scan_2d,1,1.62mm,0,1,1,"thickening of the vault (frontal), see some slight pitting"
+266741,scan_2d,1,0.91mm,0,0,0,
+266748,scan_2d,1,3.3mm,0,0,1,on superior parietals there is some hair on end organization
+266926,scan_2d,0,0.968mm,0,0,0,"thickening of the vault, cannot see porosity"
+267071,scan_2d,0,1.889mm,0,0,0,"thickening of the vault, cannot see porosity"
+267107,scan_2d,1,1.896mm,0,0,0,
+267150,scan_2d,1,1.234mm,0,1,0,
+267171,scan_2d,1,1.961mm,0,1,0,
+267182,scan_2d,1,2.653mm,0,0,0,"the vault it thickened the diploe is extremely dense, no porosity observable"
+267186,scan_2d,1,1.866mm,0,0,0,
+267197,scan_2d,1,2.39mm,0,0,0,"thickening of the vault, cannot see porosity"
+267200,scan_2d,1,3.068mm,0,0,0,"thickening of the vault, cannot see porosity"
+267208,scan_2d,0,1.372mm,0,0,0,
+267641,scan_2d,0,5.041mm,0,0,0,"can't see evidence of porosity in the orbits; thickening is evident on frontal, no pitting visible though"
+268028,scan_2d,1,3.342mm,0,0,0,

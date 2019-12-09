@@ -10,7 +10,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-This script is intended to compare results of pathology assessment of porous cranial lesions from multiple viewing modalities ( 1) direct observation, 2)photos and 3) CT scans) by 3 separate observers.
+This script is intended to compare results of pathology assessment of porous cranial lesions from multiple viewing modalities ( 1) direct observation, 2)photos and 3) CT scans) by 5 separate observers.
 
 In it I calculate:
  - percent agreement between pairs of observers
@@ -19,7 +19,7 @@ In it I calculate:
  - average ordinal score for each cranium from 1) photos and 2) 3d CT, with 3) percent of observers marking lesions as present and 4) unweighted Cohen's kappa (agreement on score)
 
 
-Data are the work of Anderson, Sutherland, and Campbell (2019). CT scans from which the data are drawn are courtesy of Dave Hunt and the Smithsonian National Museum of Natural History, and the Tsimane Health and Life History Project in collaboration with the Horus Group.
+Data are the work of Anderson, Sutherland, Campbell, Hill, and O'Donnell (2019). CT scans from which the data are drawn are courtesy of Dave Hunt and the Smithsonian National Museum of Natural History, and the Tsimane Health and Life History Project in collaboration with the Horus Group.
 
 ```{r, include = FALSE}
 # load necessary packages
@@ -30,41 +30,74 @@ library(irr)
 library(corrplot)
 library(formattable)
 library(wesanderson)
+library(patternplot)
 ```
 
 
 #### Load in the data files:
 - anonymization key (so that observers do not connect cranium ID from photos to cranium ID when viewing scans)
-- Anderson's direct observation scores
+- Direct observation scores (Anderson)
 
-- Anderson's photo scores
-- Campbell's photo scores
-- Sutherland's photo scores
+- Photo scores:
+    - Anderson (x2)
+    - Campbell (x2)
+    - Sutherland (x2)
+    - O'Donnell
+    - Hill
 
-- Anderson's scan scores
-- Campbell's scan scores
-- Sutherland's scan scores
+- Scan scores (**2D**):
+    - Anderson (x2)
+    - Campbell (x2)
+    - Sutherland (x2)
+    - O'Donnell
+    - Hill
+ - Scan scores (**3D**)
+    - Anderson (x2)
+    - Campbell (x2)
+    - Sutherland (x2)
+    - O'Donnell
+    - Hill
 
 ```{r, include=FALSE}
+#### Anonymization Key
 anon_key <- read_csv("nmnh_anonymize_key.csv")
 
+#### Direct scores
 aa_direct <- read_csv("anderson_nmnh_direct_observation.csv") %>%
   clean_names()
 
+#### Photo scores
 aa_photos <- read_csv("anderson_nmnh_photo_scores.csv") %>%
   clean_names()
+#aa_photos2
 gc_photos <- read_csv("campbell_nmnh_scores_photos.csv") %>%
 clean_names()
+#gc_photos2
 ls_photos <- read_csv("linda_sutherland_photo_scores - Sheet1.csv")
+#ls_photos2
+#lo_photos
+#eh_photos
 
+#### Scan scores
+# Anderson
 aa_scans <- read_csv("anderson_nmnh_scans.csv") %>%
   clean_names()
+#aa_2d
+#aa_3d
 gc_scans <- read_csv("campbell_nmnh_scans - campbell_nmnh_scans.csv") %>%
   clean_names()
+#gc_2d
+#gc_3d
 ls_scans <- read_csv("sutherland_nmnh_scans.csv") %>%
   clean_names()
+#ls_2d
+#ls_3d
 
-#Hill and O'Donnell, photos and scans to come...
+lo_2d <- read_csv("odonnell_scan_2d_scores - odonnell_scan_2d_scores.csv")
+lo_3d <- read_csv("odonnell_scan_3d_scores.xlsx - Sheet1.csv")
+eh_2d <- read_csv("hill_scan_2d_scores - hill_scan_2d_scores.csv")
+eh_3d <- read_csv("hill_scan_3d_scores.xlsx - Sheet1.csv")
+
 
 ```
 
@@ -77,8 +110,8 @@ See INTRAobserver markdown for outline of changes made to wrangle data into tidy
 
 ## Anonymization key. 
 anon_key <- anon_key %>%
-  filter(anonymized_id != "H") %>% # remove erroneous "H" designation (refers to nothing) 
-rename(cranium_id = anonymized_id) %>%
+  filter(cranium_id != "H") %>% # remove erroneous "H" designation (refers to nothing) 
+#rename(cranium_id = anonymized_id) %>%
   mutate(nmnh_id = as.character(nmnh_id))
   
 ```
@@ -274,6 +307,55 @@ sutherland <- ls_scans %>%
 ```
 
 
+```{r}
+# Wrangle O'Donnell's data
+
+# 2D Data
+lo_2d <-  lo_2d %>%
+  mutate(nmnh_id = as.character(nmnh_id))
+# remove 'mm' from all cells in orbital roof thickness column
+lo_2d$orbital_roof_thickness_lo <- gsub("[a-zA-Z ]", "", lo_2d$orbital_roof_thickness_lo)
+lo_2d <- lo_2d %>%
+  mutate(nmnh_id = as.character(nmnh_id)) %>%
+  select(-modality)
+
+# 3D Data
+# extract first digit only for vault score (2nd digit = healing, 3rd = extent of presence)
+lo_3d$vault_score_scan_lo <- as.numeric(substr(lo_3d$vault_score_scan_lo, start = 1, stop = 1))
+# extract first digit only for orbit score (2nd digit = healing)
+lo_3d$orbit_score_scan_lo <- as.numeric(substr(lo_3d$orbit_score_scan_lo, start = 1, stop = 1))
+lo_3d <-  lo_3d %>%
+  mutate(nmnh_id = as.character(nmnh_id)) %>%
+  rename(ecto_pitting_3d_lo = ecto_pitting_3d_eh) %>%
+  mutate(orbit_scan_binary_lo = if_else(orbit_score_scan_lo == 9, 9, 1) ,
+         vault_scan_binary_lo = if_else(vault_score_scan_lo > 0, 1, 0)) %>%
+  select(-modality) 
+
+
+
+```
+
+
+```{r}
+# Wrangle Hill's data
+
+# 2D Data
+eh_2d <- eh_2d %>%
+ mutate(nmnh_id = as.character(nmnh_id),
+        notes = as.character(notes)) %>%
+  mutate(combo_porosity_eh = if_else(ecto_pitting_2d_eh == 1, 1,             
+          if_else(true_porosity_2d_eh == 1, 1, 0))
+          ) %>%
+  select(-modality)
+  
+
+# 3D Data
+eh_3d <- eh_3d %>%
+  mutate(nmnh_id = as.character(nmnh_id)) %>%
+  mutate(orbit_scan_binary_eh = if_else(orbit_score_scan_eh > 0, 1, 0),
+          vault_scan_binary_eh = if_else(vault_score_scan_eh > 0, 1, 0)) %>%
+  select(-modality)
+```
 
 
 ```{r}
@@ -283,7 +365,8 @@ sutherland <- ls_scans %>%
 
 all_obs <- anderson %>%
   full_join(campbell) %>%
-  full_join(sutherland)
+  full_join(sutherland) 
+ 
 
 ## Create a df with a row for each skull and a uniquely named column for each observation by each observer
 all_obs_wide <- all_obs %>%
@@ -302,8 +385,13 @@ all_obs_wide <- all_obs %>%
           orbit_2d_porosity, 
           hair_on_end,
           combo_porosity))%>% 
+   full_join(eh_3d) %>%
+  full_join(eh_2d) %>%
+  full_join(lo_2d) %>%
+  full_join(lo_3d) %>%
   group_by(nmnh_id) %>% 
-  summarise_all(~first(na.omit(.)))
+  summarise_all(~first(na.omit(.))) 
+
 
 ```
 
@@ -316,14 +404,16 @@ QUESTION: For each 2d CT lesion parameter, given that it is present how likely i
 ```{r}
 avg_2d_porosity <-round(apply(all_obs_wide[,c("vault_2d_porosity_aa",
                       "vault_2d_porosity_gc",
-                      "vault_2d_porosity_ls")], 1, mean), 2)
+                      "vault_2d_porosity_ls",
+                      "true_porosity_2d_lo",
+                      "true_porosity_2d_eh")], 1, mean), 1)
 all_obs_wide <- cbind(all_obs_wide, avg_2d_porosity)
 
 ```
     
 
 QUESTION: For each modality (photo, 2D combined, 3D) or 2D criterion (pitting,porosity, hair-on-end),
-        how well do all obserer ratings agree?
+        how well do all observer ratings agree?
   Light's Kappa for each = average of Cohen's kapas from all pairwise combinations of observers for that given modality/criterion
 ```{r}
 
@@ -334,9 +424,10 @@ vault_photo_all <- all_obs_wide %>%
 
 vault_photo_ord_all <- all_obs_wide %>%
   select(starts_with("vault_score_photo"))
-                                      
+ 
+# CAREFUL -- with added data from Hill and O'Donnell, this no longer works                                  
 vault_porosity_2d_all <- all_obs_wide %>% select(starts_with("vault_2d_porosity"))
-
+# CAREFUL -- with added data from Hill and O'Donnell, this no longer works  
 vault_pitting_2d_all <- all_obs_wide %>%
   select(starts_with("ecto_pitting"))
 
@@ -391,8 +482,8 @@ QUESTION: How do false-positive and false-negative rates compare across observer
 
 ```{r}
 # To calculate false-positive and false-negative rates, probably need to write your own function
-real <- 0
-observed <- 1
+#real <- 0
+#observed <- 1
 
 # This function takes two vectors: the first containing values assumed to be true, the second containing observed values to be tested for false positives.
 false_pos <- function(real, observed){
@@ -435,6 +526,12 @@ e2 <- false_neg(all_obs_wide$vault_direct_binary, all_obs_wide$combo_porosity_gc
 f1 <- false_pos(all_obs_wide$vault_direct_binary, all_obs_wide$combo_porosity_ls)
 f2 <- false_neg(all_obs_wide$vault_direct_binary, all_obs_wide$combo_porosity_ls)
 
+j1 <- false_pos(all_obs_wide$vault_direct_binary, all_obs_wide$combo_porosity_eh)
+j2 <- false_neg(all_obs_wide$vault_direct_binary, all_obs_wide$combo_porosity_eh)
+
+m1 <- false_pos(all_obs_wide$vault_direct_binary, all_obs_wide$combo_porosity_lo)
+m2 <- false_neg(all_obs_wide$vault_direct_binary, all_obs_wide$combo_porosity_lo)
+
 # 3D
 g1 <- false_pos(all_obs_wide$vault_direct_binary, all_obs_wide$vault_scan_binary_aa)
 g2 <- false_neg(all_obs_wide$vault_direct_binary, all_obs_wide$vault_scan_binary_aa)
@@ -443,40 +540,49 @@ h1 <- false_pos(all_obs_wide$vault_direct_binary, all_obs_wide$vault_scan_binary
 h2 <- false_neg(all_obs_wide$vault_direct_binary, all_obs_wide$vault_scan_binary_gc)
 
 i1 <- false_pos(all_obs_wide$vault_direct_binary, all_obs_wide$vault_scan_binary_ls)
-i2 <- false_neg(all_obs_wide$vault_direct_binary, all_obs_wide$vault_scan_binary_gc)
+i2 <- false_neg(all_obs_wide$vault_direct_binary, all_obs_wide$vault_scan_binary_ls)
+
+k1 <- false_pos(all_obs_wide$vault_direct_binary, all_obs_wide$vault_scan_binary_eh)
+k2 <- false_neg(all_obs_wide$vault_direct_binary, all_obs_wide$vault_scan_binary_eh)
+
+l1 <- false_pos(all_obs_wide$vault_direct_binary, all_obs_wide$vault_scan_binary_lo)
+l2 <- false_neg(all_obs_wide$vault_direct_binary, all_obs_wide$vault_scan_binary_lo)
 
 
 false_pos_data <- data.frame(
-  modality = c("photo", "photo", "photo",
-               "2D", "2D", "2D",
-               "3D", "3D", "3D"),
+  modality = c(rep("photo", 3),
+               rep("2D", 5),
+               rep("3D", 5)),
   observers = c("aa", "gc", "ls",
-                "aa", "gc", "ls",
-                "aa", "gc", "ls"),
-  value = c(a1, b1, c1, d1, e1, f1, g1, h1, i1))%>%
+                rep(c("aa", "gc", "ls", "eh", "lo"), 2)),
+  value = c(a1, b1, c1, d1, e1, f1, j1, m1, g1, h1, i1, k1, l1))%>%
   mutate(modality = factor(modality, levels = c("photo", "2D", "3D"))) # relevel modality to control its order in the plot
 
 false_neg_data <- data.frame(
-  modality = c("photo", "photo", "photo",
-               "2D", "2D", "2D",
-               "3D", "3D", "3D"),
+   modality = c(rep("photo", 3),
+               rep("2D", 5),
+               rep("3D", 5)),
   observers = c("aa", "gc", "ls",
-                "aa", "gc", "ls",
-                "aa", "gc", "ls"),
-  value = c(a2, b2, c2, d2, e2, f2, g2, h2, i2)) %>%
+                rep(c("aa", "gc", "ls", "eh", "lo"), 2)),
+  value = c(a2, b2, c2, d2, e2, f2, j2, m1, g2, h2, i2, k2, l2)) %>%
   mutate(modality = factor(modality, levels = c("photo", "2D", "3D")))
 
 # save figure showing false pos/false neg for all observers across in each modality, relative to scores from direct observation (aa)
-png('relative_error_rates.png')
+#png('relative_error_rates.png')
 ggplot(false_pos_data, aes(x = modality, y = value)) +
-  geom_col(aes(fill = observers), position = "dodge") +
-  geom_col(data = false_neg_data, aes(fill = observers), position = "dodge") +
+  geom_col(aes(fill = observers), 
+           position = "dodge", 
+           width = 0.5) +
+  geom_col(data = false_neg_data, 
+           aes(fill = observers), 
+           position = "dodge", 
+           width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +
-  scale_fill_manual(values = wes_palette("FantasticFox1")) +
+  scale_fill_manual(values = wes_palette("Darjeeling1")) +
   scale_y_continuous(breaks=c(-5,-4,-3,-2,-1,0,1,2,3,4,5)) +
-  ylab("difference from directly observed scores")
-dev.off()
+  ylab("difference from directly observed scores") 
+#dev.off()
 
 ```
 Fig. x From direct observation, five crania were scored as absent for vault lesions. Therefore, the false positive score hits a ceiling at five, whereas false negatives could be as high as 17.Relative to directly observed scores, photos tend to produce false positives, while 3D CT tends to produce false negatives. Overall, photos and 2D CT result in an average of four crania miscategorized by pathology state, while 3D CT results in five crania with classification different from direct observation. 
@@ -590,7 +696,8 @@ hoe_agree <- round(apply(hoe, 1, mean), 2)
 
 # create vectors showing the % of observers who scored each skull as having true porosity and ectocranial pitting
 porosity <- all_obs_wide %>%
-select(starts_with("vault_2d_porosity"))
+select(starts_with("true_porosity_2d"),
+       starts_with("vault_2d_porosity"))
 porosity_agree <- round(apply(porosity, 1, mean), 2)
 
 pitting <- all_obs_wide %>%
@@ -602,19 +709,25 @@ pitting_agree <- round(apply(pitting, 1, mean), 2)
 # apply the function to each row of the subsetted data (vault scan presence/absence scores only): what % of observers found vault lesions present on 3D scan, for each skull?
 bin_agree_vault_scan <- apply(all_obs_wide[, c("vault_scan_binary_aa",
                                              "vault_scan_binary_gc",
-                                             "vault_scan_binary_ls")], MARGIN = 1, FUN = found_lesion)
+                                             "vault_scan_binary_ls",
+                                             "vault_scan_binary_eh",
+                                             "vault_scan_binary_lo")], MARGIN = 1, FUN = found_lesion)
 
 # create vector of average ordinal scores per skull
 ord_avg_vault_scan <- round(apply(all_obs_wide[,c("vault_score_scan_aa",
                                         "vault_score_scan_gc",
-                                        "vault_score_scan_ls")],
+                                        "vault_score_scan_ls",
+                                        "vault_score_scan_eh",
+                                        "vault_score_scan_lo")],
                                 MARGIN = 1,
                                 FUN = mean), 2)
 
 # calculate vector with ranges of 3D scores
 ord_range_vault_scan <- apply(all_obs_wide[,c("vault_score_scan_aa",
                                         "vault_score_scan_gc",
-                                        "vault_score_scan_ls")],
+                                        "vault_score_scan_ls",
+                                        "vault_score_scan_eh",
+                                        "vault_score_scan_lo")],
                                 MARGIN = 1,
                                 FUN = range2)
  
@@ -650,12 +763,31 @@ print.form
 
 I want to make a facet_wrapped histogram showing the ordinal scores for each skull
 ```{r}
-vault_scan_long <- all_obs_wide %>%
+vault_scan_long 
+distr_plot_data <- all_obs_wide %>%
 pivot_longer(cols = c(vault_score_scan_aa, 
                       vault_score_scan_gc,
-                      vault_score_scan_ls),
+                      vault_score_scan_ls,
+                      vault_score_scan_eh,
+                      vault_score_scan_lo),
              names_to = "observer",
-             values_to = "vault_score_scan")
+             values_to = "vault_score_scan") %>%
+  pivot_longer(cols = c(vault_score_photo_aa,
+                        vault_score_photo_gc,
+                        vault_score_photo_ls,
+                        vault_score_scan),
+               names_to = "vault_modality",
+               values_to = "vault_score") %>%
+  group_by(vault_modality, nmnh_id) %>%
+  mutate(score_sum = sum(vault_score)) %>%
+  arrange(-score_sum) %>%
+group_by(vault_modality, nmnh_id,observer) %>%
+count(vault_score) 
+# remove bulky text from 'observer' column, leaving only observer initials
+distr_plot_data$observer <- substr(distr_plot_data$observer, start = 18, stop = 19)
+# remove bulky text from 'vault_modality' column, leaving only modality info
+distr_plot_data$vault_modality <- substr(distr_plot_data$vault_modality, start = 13, stop =17 )
+
 
 ggplot(data = all_obs_wide, aes(x = vault_score_scan_aa)) +
   geom_histogram()
@@ -678,35 +810,31 @@ ggplot(data = vault_scan_long, aes(x = vault_score_scan)) +
   geom_histogram() +
   facet_wrap(~ nmnh_id)
 
-tmp <- vault_scan_long %>%
+# plot distribution of ordinal scores (3D vault) for each observer
+obs_vault_dist <- vault_scan_long %>%
   group_by(observer) %>%
   count(vault_score_scan)
-ggplot(data = tmp, aes(x = vault_score_scan, y = n)) + 
+
+ggplot(data = obs_vault_dist, aes(x = vault_score_scan, y = n)) + 
   geom_col() +
   facet_wrap(vars(observer))
+# Each observer has a different distribution of scores with a different mode
 
-tmp2 <- vault_scan_long %>%
+
+
+# plot distribution of ordinal scores (3D vault) scored for each skull
+skull_vault_dist <- vault_scan_long %>%
   group_by(observer, nmnh_id) %>%
   count(vault_score_scan)
 
-ggplot(data = tmp2, aes(x = vault_score_scan, y = n)) +
+ggplot(data = skull_vault_dist, aes(x = vault_score_scan, y = n)) +
   geom_col(aes(fill = observer), alpha = 0.4) +
   facet_wrap(vars(nmnh_id)) +
   geom_col(aes(x = ))
 
 
 #plot distribution of vault scores by observer for photos and for 3D scans
-tmp3 <- all_obs %>%
-  pivot_longer(cols = c(vault_score_scan, 
-                      vault_score_photo),
-             names_to = "vault_modality",
-             values_to = "vault_score") 
-tmp4 <- tmp3 %>%
-  group_by(vault_modality, nmnh_id) %>%
-  mutate(score_sum = sum(vault_score)) %>%
-  arrange(-score_sum) %>%
-group_by(vault_modality, nmnh_id,observer) %>%
-count(vault_score)
+
   
 vault_distribution_plot <- ggplot(data = tmp4, aes(x = vault_score, y = n)) +
   geom_col(aes(fill = observer), position = "stack") +
@@ -727,12 +855,23 @@ ggsave("photo_vs_3D_vault.png",
        plot = modality_distr_plot)
 
 
-modality_distr_plot2 <- ggplot(data = tmp4, aes(x = vault_score, y = n)) +
+modality_distr_plot2 <- ggplot(data = distr_plot_data, aes(x = vault_score, y = n)) +
   geom_col(aes(fill = observer), position = "stack") +
   facet_wrap(vars(nmnh_id)) +
   theme_dark()+
-  scale_fill_manual(values = wes_palette("FantasticFox1"
+  scale_fill_manual(values = wes_palette("Darjeeling1"
   ))
+
+pattern.type<-c('blank','crosshatch')
+pattern.color= c('black')
+background.color=c('grey', 'chartreuse3',  'bisque')
+#pattern_plot <-patternbar(distr_plot_data, 
+           #               x = vault_score, y = n, 
+            #              group = vault_modality, 
+             #             pattern.type=pattern.type, 
+              #    pattern.color = 'black')
+
+modality_distr_plot3 <- ggplot(data = vault_scan_long, aes(x = vault_score_scan, y = n))
 # would love to get this plot with color-differentiated stacked bars showing each observer and each modality, then ordered from cranium with highest cumulative score to lowest, maybe with an indicator for number of 'hair-on-end' yeses. 
 ```
 
